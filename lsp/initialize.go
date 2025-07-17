@@ -31,10 +31,6 @@ type InitializeResult struct {
 	ServerInfo   ServerInfo         `json:"serverInfo"`
 }
 
-type ServerCapabilities struct {
-	TextDocumentSync TextDocumentSyncOptions `json:"textDocumentSync"`
-}
-
 type TextDocumentSyncOptions struct {
 	OpenClose bool `json:"openClose"`
 	Change    int  `json:"change"`
@@ -45,6 +41,13 @@ type ServerInfo struct {
 	Version string `json:"version"`
 }
 
+type ServerCapabilities struct {
+	TextDocumentSync   TextDocumentSyncOptions `json:"textDocumentSync"`
+	HoverProvider      bool                    `json:"hoverProvider"`
+	DefinitionProvider bool                    `json:"definitionProvider"`
+	PositionEncoding   string                  `json:"positionEncoding"`
+}
+
 func NewInitializeResponse(id int) InitializeResponse {
 	return InitializeResponse{
 		Response: Response{
@@ -53,11 +56,14 @@ func NewInitializeResponse(id int) InitializeResponse {
 		},
 		Result: InitializeResult{
 			Capabilities: ServerCapabilities{
+				PositionEncoding: "utf-16",
 				TextDocumentSync: TextDocumentSyncOptions{
 					OpenClose: true,
 					//TODO: Handle INCREMENTAL
 					Change: FULL,
 				},
+				HoverProvider:      true,
+				DefinitionProvider: true,
 			},
 			ServerInfo: ServerInfo{
 				Name:    "bsqls",

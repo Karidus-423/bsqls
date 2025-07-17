@@ -6,6 +6,7 @@ import (
 	"bsqls/rpc"
 	"bufio"
 	"encoding/json"
+	"io"
 	"log"
 	"os"
 )
@@ -19,17 +20,19 @@ func main() {
 
 	state := analyzer.NewState()
 
+	writer := os.Stdout
+
 	for scanner.Scan() {
 		msg := scanner.Bytes()
 		method, contents, err := rpc.DecodeMessage(msg)
 		if err != nil {
 			logger.Printf("ERR: %s", err)
 		}
-		HandleMessage(logger, state, method, contents)
+		HandleMessage(logger, writer, state, method, contents)
 	}
 }
 
-func HandleMessage(logger *log.Logger, state analyzer.State, method string, contents []byte) {
+func HandleMessage(logger *log.Logger, writer io.Writer, state analyzer.State, method string, contents []byte) {
 	logger.Printf("Method Recieved: %s", method)
 
 	switch method {
@@ -44,11 +47,8 @@ func HandleMessage(logger *log.Logger, state analyzer.State, method string, cont
 			request.Params.ClientInfo.Version,
 		)
 
-		msg := lsp.NewInitializeResponse(request.ID)
-		reply := rpc.EncodeMessage(msg)
-
-		writer := os.Stdout
-		writer.Write([]byte(reply))
+		initialize := lsp.NewInitializeResponse(request.ID)
+		WriteResponse(initialize, writer)
 
 	case "textDocument/didOpen":
 		var request lsp.DidOpenTextDocumentNotification
@@ -70,7 +70,40 @@ func HandleMessage(logger *log.Logger, state analyzer.State, method string, cont
 				request.Params.TextDocument.Uri,
 				change.Text)
 		}
+
+	case "textDocument/hover":
+		var request lsp.HoverRequest
+		if err := json.Unmarshal(contents, &request); err != nil {
+			logger.Printf("Failed textDocument/hover: %s", err)
+		}
+
+		hover := state.HandleHover(request.ID,
+			request.Params.TextDocument.Uri,
+			request.Params.Position,
+		)
+
+		WriteResponse(hover, writer)
+
+	case "textDocument/definition":
+		var request lsp.DefinitionRequest
+		if err := json.Unmarshal(contents, &request); err != nil {
+			logger.Printf("Failed textDocument/definition: %s", err)
+		}
+
+		definition := state.HandleDefinition(
+			request.ID,
+			request.Params.TextDocument.Uri,
+			request.Params.Position,
+		)
+
+		WriteResponse(definition, writer)
 	}
+
+}
+
+func WriteResponse(msg any, writer io.Writer) {
+	reply := rpc.EncodeMessage(msg)
+	writer.Write([]byte(reply))
 }
 
 func GetLogger(filename string) *log.Logger {
