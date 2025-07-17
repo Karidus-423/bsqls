@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bsqls/analyzer"
 	"bsqls/lsp"
 	"bsqls/rpc"
 	"bufio"
@@ -16,17 +17,19 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Split(rpc.Split)
 
+	state := analyzer.NewState()
+
 	for scanner.Scan() {
 		msg := scanner.Bytes()
 		method, contents, err := rpc.DecodeMessage(msg)
 		if err != nil {
 			logger.Printf("ERR: %s", err)
 		}
-		HandleMessage(logger, method, contents)
+		HandleMessage(logger, state, method, contents)
 	}
 }
 
-func HandleMessage(logger *log.Logger, method string, contents []byte) {
+func HandleMessage(logger *log.Logger, state analyzer.State, method string, contents []byte) {
 	logger.Printf("Method Recieved: %s", method)
 
 	switch method {
@@ -43,12 +46,30 @@ func HandleMessage(logger *log.Logger, method string, contents []byte) {
 
 		msg := lsp.NewInitializeResponse(request.ID)
 		reply := rpc.EncodeMessage(msg)
-		logger.Printf("Sending: %s", reply)
 
 		writer := os.Stdout
 		writer.Write([]byte(reply))
+
 	case "textDocument/didOpen":
-		logger.Println("Opended Document")
+		var request lsp.DidOpenTextDocumentNotification
+		if err := json.Unmarshal(contents, &request); err != nil {
+			logger.Printf("Failed textDocument/didOpen: %s", err)
+		}
+		logger.Printf("Opened File: %s", request.Params.TextDocument.Uri)
+
+		state.OpenDocument(request.Params.TextDocument.Uri, request.Params.TextDocument.Text)
+
+	case "textDocument/didChange":
+		var request lsp.TextDocumentDidChangeNotification
+		if err := json.Unmarshal(contents, &request); err != nil {
+			logger.Printf("Failed textDocument/didChange: %s", err)
+		}
+		logger.Printf("Changed: %s", request.Params.TextDocument.Uri)
+		for _, change := range request.Params.ContentChanges {
+			state.UpdateDocument(
+				request.Params.TextDocument.Uri,
+				change.Text)
+		}
 	}
 }
 

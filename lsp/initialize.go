@@ -1,5 +1,11 @@
 package lsp
 
+const /*Change*/ (
+	NONE = iota
+	FULL
+	INCREMENTAL
+)
+
 type InitializeRequest struct {
 	Request
 	Params InitializeRequestParams `json:"params"`
@@ -25,12 +31,6 @@ type InitializeResult struct {
 	ServerInfo   ServerInfo         `json:"serverInfo"`
 }
 
-const /*Change*/ (
-	NONE = iota
-	FULL
-	INCREMENTAL
-)
-
 type ServerCapabilities struct {
 	TextDocumentSync TextDocumentSyncOptions `json:"textDocumentSync"`
 }
@@ -55,7 +55,8 @@ func NewInitializeResponse(id int) InitializeResponse {
 			Capabilities: ServerCapabilities{
 				TextDocumentSync: TextDocumentSyncOptions{
 					OpenClose: true,
-					Change:    FULL,
+					//TODO: Handle INCREMENTAL
+					Change: FULL,
 				},
 			},
 			ServerInfo: ServerInfo{

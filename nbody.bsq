@@ -1,4 +1,3 @@
-%%
 %%This is a bosque nbody implementation of https://benchmarksgame-team.pages.debian.net/benchmarksgame/performance/nbody.html.
 %%
 
@@ -236,4 +235,5 @@ public function main(): Float {
 
     %%let system_end = Flows::while<(|Nat, NBodySystem|)>((|0n, system_start|), pred(state) => state.0 < iters, fn(state) => [state.0 + 1n, state.1.advance(step)]);
     %%return system_end.1.energy();
+	he
 }
